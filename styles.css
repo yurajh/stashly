@@ -19,9 +19,10 @@
   <body>
     <div class="app-shell">
       <header class="topbar">
-        <div>
+        <div class="brand-block">
           <p class="eyebrow">Free recipe organizer</p>
           <h1>Stashly</h1>
+          <p class="tagline">Keep your favorite dishes, quick meals, and cozy dinners in one place.</p>
         </div>
 
         <div class="topbar-actions">
@@ -35,6 +36,23 @@
           <button id="newRecipeBtn" class="primary" type="button">Add recipe</button>
         </div>
       </header>
+
+      <section class="summary-bar" aria-label="Recipe summary">
+        <div class="stat-card">
+          <span class="stat-label">Saved</span>
+          <strong id="statSaved">0</strong>
+        </div>
+
+        <div class="stat-card">
+          <span class="stat-label">Favorites</span>
+          <strong id="statFavorites">0</strong>
+        </div>
+
+        <div class="stat-card">
+          <span class="stat-label">Tags</span>
+          <strong id="statTags">0</strong>
+        </div>
+      </section>
 
       <main class="layout">
         <aside class="panel form-panel">
@@ -111,8 +129,16 @@
               <input id="searchInput" type="search" placeholder="Try: pasta, vegan, easy" />
             </label>
 
-            <p id="recipeCount" class="recipe-count">0 recipes</p>
+            <button id="clearAllBtn" class="secondary danger" type="button">Clear all</button>
           </div>
+
+          <div class="filter-bar" aria-label="Recipe filters">
+            <button class="filter-chip active" data-filter="all" type="button">All</button>
+            <button class="filter-chip" data-filter="favorites" type="button">Favorites</button>
+            <button class="filter-chip" data-filter="quick" type="button">Quick meals</button>
+          </div>
+
+          <p id="recipeCount" class="recipe-count">0 recipes</p>
 
           <div id="emptyState" class="empty-state hidden">
             <div class="empty-icon">🍽️</div>

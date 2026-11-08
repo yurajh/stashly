@@ -1,39 +1,386 @@
-# Stashly
+const STORAGE_KEY = "stashly.recipes.v1";
 
-Stashly is a completely free, public recipe-saving web app built for one simple purpose: store the recipes you love, organize them by tags, and find them quickly when you're cooking.
+const sampleRecipes = [
+  {
+    id: "sample-1",
+    title: "Crispy Tofu Rice Bowl",
+    description: "A colorful, comforting bowl packed with protein, crunch, and a quick peanut drizzle.",
+    prepTime: "15 min",
+    cookTime: "20 min",
+    servings: "2",
+    tags: ["quick", "dinner", "plant-based"],
+    imageUrl: "https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=900&q=80",
+    ingredients: "1 block extra-firm tofu\n2 cups cooked rice\n1 cup broccoli\n1 carrot, sliced\n2 tbsp soy sauce\n1 tbsp peanut butter\n1 tsp lime juice",
+    instructions: "1. Press and cube the tofu, then pan-sear until crispy.\n2. Steam or roast the broccoli and carrot until tender.\n3. Stir together the soy sauce, peanut butter, and lime juice to make the sauce.\n4. Assemble rice, tofu, and vegetables in bowls and drizzle with the sauce.",
+    favorite: true,
+  },
+  {
+    id: "sample-2",
+    title: "Lemon Herb Pasta",
+    description: "Bright, garlicky, and ready in under 30 minutes for a cozy weeknight meal.",
+    prepTime: "10 min",
+    cookTime: "15 min",
+    servings: "2",
+    tags: ["easy", "family", "pasta"],
+    imageUrl: "https://images.unsplash.com/photo-1555949258-eb67b1ef0ceb?auto=format&fit=crop&w=900&q=80",
+    ingredients: "200g pasta\n2 cloves garlic, minced\n1 lemon, zest and juice\n2 tbsp olive oil\n1/4 cup parsley\nParmesan to taste",
+    instructions: "1. Cook the pasta until al dente.\n2. Warm olive oil and garlic gently in a pan.\n3. Toss in the pasta with lemon zest, juice, and parsley.\n4. Finish with parmesan and black pepper before serving.",
+    favorite: false,
+  },
+];
 
-## Features
+const recipeForm = document.getElementById("recipeForm");
+const formTitle = document.getElementById("formTitle");
+const recipeGrid = document.getElementById("recipeGrid");
+const searchInput = document.getElementById("searchInput");
+const emptyState = document.getElementById("emptyState");
+const recipeCount = document.getElementById("recipeCount");
+const exportBtn = document.getElementById("exportBtn");
+const importInput = document.getElementById("importFile");
+const newRecipeBtn = document.getElementById("newRecipeBtn");
+const cancelEditBtn = document.getElementById("cancelEditBtn");
+const clearAllBtn = document.getElementById("clearAllBtn");
+const filterButtons = Array.from(document.querySelectorAll(".filter-chip"));
+const statSaved = document.getElementById("statSaved");
+const statFavorites = document.getElementById("statFavorites");
+const statTags = document.getElementById("statTags");
 
-- Save recipes locally in the browser
-- Add/edit/delete recipes
-- Search by title, ingredients, or tag
-- Optional prep/cook time, servings, and image URL
-- Export recipes as JSON
-- Import recipes from a saved backup
-- Free public hosting via GitHub Pages
+let recipes = loadRecipes();
+let activeFilter = "all";
 
-## Local development
+function loadRecipes() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return [...sampleRecipes];
 
-Open `index.html` directly in a browser, or serve the repository locally:
+    const parsed = JSON.parse(saved);
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      return [...sampleRecipes];
+    }
 
-```bash
-python3 -m http.server 8000
-```
+    return parsed;
+  } catch (error) {
+    console.warn("Unable to read saved recipes, using sample recipes.", error);
+    return [...sampleRecipes];
+  }
+}
 
-Then visit `http://localhost:8000`.
+function saveRecipes() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(recipes));
+}
 
-## Launching on GitHub Pages
+function uid() {
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
 
-1. Push this repository to GitHub.
-2. Open the repository on GitHub.
-3. Go to Settings > Pages.
-4. Under Build and deployment, set Source to GitHub Actions.
-5. The included Pages workflow will deploy the app automatically.
+function normalizeTags(value) {
+  return value
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
 
-The app will be available at:
+function getMatchesForFilter(recipe) {
+  if (activeFilter === "favorites") return recipe.favorite;
 
-`https://yurajh.github.io/stashly/`
+  if (activeFilter === "quick") {
+    const prepValue = Number.parseInt((recipe.prepTime || "").match(/\d+/)?.[0] || "0", 10);
+    const hasQuickTag = (recipe.tags || []).some((tag) => tag.toLowerCase().includes("quick"));
+    return hasQuickTag || prepValue <= 20;
+  }
 
-## Notes
+  return true;
+}
 
-This first version is designed to be free, public, and easy to use without a backend. Data is stored in the user's browser using `localStorage`, which means recipes are saved on the device used to view the app.
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function renderSummary() {
+  const total = recipes.length;
+  const favorites = recipes.filter((recipe) => recipe.favorite).length;
+  const uniqueTags = new Set(recipes.flatMap((recipe) => recipe.tags || [])).size;
+
+  statSaved.textContent = total;
+  statFavorites.textContent = favorites;
+  statTags.textContent = uniqueTags;
+}
+
+function getFilteredRecipes() {
+  const term = searchInput.value.trim().toLowerCase();
+
+  return recipes.filter((recipe) => {
+    const matchesFilter = getMatchesForFilter(recipe);
+
+    if (!matchesFilter) return false;
+
+    if (!term) return true;
+
+    const text = [
+      recipe.title,
+      recipe.description,
+      recipe.ingredients,
+      recipe.instructions,
+      (recipe.tags || []).join(" "),
+    ]
+      .join(" ")
+      .toLowerCase();
+
+    return text.includes(term);
+  });
+}
+
+function renderRecipes() {
+  const filtered = getFilteredRecipes();
+  recipeCount.textContent = `${filtered.length} recipe${filtered.length === 1 ? "" : "s"}`;
+
+  if (filtered.length === 0) {
+    recipeGrid.innerHTML = "";
+    emptyState.classList.remove("hidden");
+    return;
+  }
+
+  emptyState.classList.add("hidden");
+
+  recipeGrid.innerHTML = filtered
+    .map((recipe) => {
+      const tags = (recipe.tags || []).map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("");
+      const imageMarkup = recipe.imageUrl
+        ? `<img class="recipe-image" src="${escapeHtml(recipe.imageUrl)}" alt="${escapeHtml(recipe.title)}" loading="lazy" />`
+        : `<div class="recipe-image" style="display:flex;align-items:center;justify-content:center;font-size:2.4rem;background:linear-gradient(135deg,#fce3d3,#f3bba1);">${escapeHtml((recipe.title || "?").charAt(0).toUpperCase())}</div>`;
+
+      return `
+        <article class="recipe-card">
+          ${imageMarkup}
+
+          <div class="card-body">
+            <div class="card-top">
+              <h3>${escapeHtml(recipe.title)}</h3>
+              <button
+                class="favorite-btn ${recipe.favorite ? "liked" : ""}"
+                type="button"
+                data-action="favorite"
+                data-id="${recipe.id}"
+                aria-label="Toggle favorite"
+              >
+                ${recipe.favorite ? "★" : "☆"}
+              </button>
+            </div>
+
+            <div class="recipe-meta">
+              ${recipe.prepTime ? `<span class="meta-pill">Prep: ${escapeHtml(recipe.prepTime)}</span>` : ""}
+              ${recipe.cookTime ? `<span class="meta-pill">Cook: ${escapeHtml(recipe.cookTime)}</span>` : ""}
+              ${recipe.servings ? `<span class="meta-pill">Serves: ${escapeHtml(recipe.servings)}</span>` : ""}
+            </div>
+
+            ${recipe.description ? `<p>${escapeHtml(recipe.description)}</p>` : ""}
+
+            <div class="tag-row">${tags || "<span class=\"tag\">general</span>"}</div>
+          </div>
+
+          <div class="card-actions">
+            <button class="inline-btn" type="button" data-action="edit" data-id="${recipe.id}">Edit</button>
+            <button class="inline-btn delete" type="button" data-action="delete" data-id="${recipe.id}">Delete</button>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+
+  renderSummary();
+}
+
+function resetForm() {
+  recipeForm.reset();
+  document.getElementById("recipeId").value = "";
+  formTitle.textContent = "New recipe";
+}
+
+function populateForm(recipeId) {
+  const recipe = recipes.find((item) => item.id === recipeId);
+  if (!recipe) return;
+
+  document.getElementById("recipeId").value = recipe.id;
+  document.getElementById("title").value = recipe.title || "";
+  document.getElementById("description").value = recipe.description || "";
+  document.getElementById("prepTime").value = recipe.prepTime || "";
+  document.getElementById("cookTime").value = recipe.cookTime || "";
+  document.getElementById("servings").value = recipe.servings || "";
+  document.getElementById("tags").value = (recipe.tags || []).join(", ");
+  document.getElementById("imageUrl").value = recipe.imageUrl || "";
+  document.getElementById("ingredients").value = recipe.ingredients || "";
+  document.getElementById("instructions").value = recipe.instructions || "";
+  formTitle.textContent = "Edit recipe";
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function handleRecipeSubmit(event) {
+  event.preventDefault();
+
+  const id = document.getElementById("recipeId").value || uid();
+  const recipe = {
+    id,
+    title: document.getElementById("title").value.trim(),
+    description: document.getElementById("description").value.trim(),
+    prepTime: document.getElementById("prepTime").value.trim(),
+    cookTime: document.getElementById("cookTime").value.trim(),
+    servings: document.getElementById("servings").value.trim(),
+    tags: normalizeTags(document.getElementById("tags").value),
+    imageUrl: document.getElementById("imageUrl").value.trim(),
+    ingredients: document.getElementById("ingredients").value.trim(),
+    instructions: document.getElementById("instructions").value.trim(),
+    favorite: Boolean(recipes.find((item) => item.id === id)?.favorite || false),
+  };
+
+  if (!recipe.title || !recipe.ingredients || !recipe.instructions) {
+    alert("Please add a title, ingredients, and instructions before saving.");
+    return;
+  }
+
+  const existingIndex = recipes.findIndex((item) => item.id === id);
+
+  if (existingIndex >= 0) {
+    recipes[existingIndex] = recipe;
+  } else {
+    recipes.unshift(recipe);
+  }
+
+  saveRecipes();
+  renderRecipes();
+  resetForm();
+}
+
+function handleGridAction(event) {
+  const button = event.target.closest("button[data-action]");
+  if (!button) return;
+
+  const { action, id } = button.dataset;
+
+  if (action === "delete") {
+    const shouldDelete = window.confirm("Delete this recipe?");
+    if (!shouldDelete) return;
+
+    recipes = recipes.filter((recipe) => recipe.id !== id);
+    saveRecipes();
+    renderRecipes();
+    return;
+  }
+
+  if (action === "edit") {
+    populateForm(id);
+    return;
+  }
+
+  if (action === "favorite") {
+    recipes = recipes.map((recipe) =>
+      recipe.id === id ? { ...recipe, favorite: !recipe.favorite } : recipe
+    );
+
+    saveRecipes();
+    renderRecipes();
+  }
+}
+
+function exportRecipes() {
+  const payload = JSON.stringify(recipes, null, 2);
+  const blob = new Blob([payload], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "stashly-recipes.json";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function importRecipes(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (loadEvent) => {
+    try {
+      const imported = JSON.parse(String(loadEvent.target?.result ?? "[]"));
+      if (!Array.isArray(imported)) {
+        throw new Error("Invalid data format");
+      }
+
+      recipes = imported.map((recipe) => ({
+        id: recipe.id || uid(),
+        title: recipe.title || "Untitled recipe",
+        description: recipe.description || "",
+        prepTime: recipe.prepTime || "",
+        cookTime: recipe.cookTime || "",
+        servings: recipe.servings || "",
+        tags: Array.isArray(recipe.tags) ? recipe.tags : normalizeTags(String(recipe.tags || "")),
+        imageUrl: recipe.imageUrl || "",
+        ingredients: recipe.ingredients || "",
+        instructions: recipe.instructions || "",
+        favorite: Boolean(recipe.favorite),
+      }));
+
+      saveRecipes();
+      renderRecipes();
+      resetForm();
+      alert("Recipes imported successfully.");
+    } catch (error) {
+      console.error(error);
+      alert("Unable to import that file. Please choose a valid Stashly JSON export.");
+    } finally {
+      importInput.value = "";
+    }
+  };
+
+  reader.readAsText(file);
+}
+
+function clearAllRecipes() {
+  if (recipes.length === 0) {
+    return;
+  }
+
+  const answer = window.confirm("Clear all saved recipes permanently?");
+  if (!answer) {
+    return;
+  }
+
+  recipes = [];
+  saveRecipes();
+  renderRecipes();
+  resetForm();
+}
+
+function setActiveFilter(filterName) {
+  activeFilter = filterName;
+
+  filterButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.filter === filterName);
+  });
+
+  renderRecipes();
+}
+
+recipeForm.addEventListener("submit", handleRecipeSubmit);
+recipeGrid.addEventListener("click", handleGridAction);
+searchInput.addEventListener("input", renderRecipes);
+exportBtn.addEventListener("click", exportRecipes);
+importInput.addEventListener("change", importRecipes);
+newRecipeBtn.addEventListener("click", resetForm);
+cancelEditBtn.addEventListener("click", resetForm);
+clearAllBtn.addEventListener("click", clearAllRecipes);
+filterButtons.forEach((button) => {
+  button.addEventListener("click", () => setActiveFilter(button.dataset.filter));
+});
+
+renderRecipes();
+
+if (recipes.length === 0) {
+  emptyState.classList.remove("hidden");
+}
