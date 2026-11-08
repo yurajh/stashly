@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Stashly is a free public recipe-saving web app for organizing favorite dishes."
+    />
+    <title>Stashly | Recipe Organizer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Free recipe organizer</p>
+          <h1>Stashly</h1>
+        </div>
+
+        <div class="topbar-actions">
+          <button id="exportBtn" class="secondary" type="button">Export</button>
+
+          <label class="secondary upload-button">
+            <input id="importFile" type="file" accept="application/json" hidden />
+            Import
+          </label>
+
+          <button id="newRecipeBtn" class="primary" type="button">Add recipe</button>
+        </div>
+      </header>
+
+      <main class="layout">
+        <aside class="panel form-panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow dark">Recipe editor</p>
+              <h2 id="formTitle">New recipe</h2>
+            </div>
+          </div>
+
+          <form id="recipeForm">
+            <input type="hidden" id="recipeId" />
+
+            <div class="field">
+              <label for="title">Title</label>
+              <input id="title" name="title" type="text" placeholder="Spicy coconut noodles" required />
+            </div>
+
+            <div class="field">
+              <label for="description">Description</label>
+              <textarea id="description" name="description" rows="3" placeholder="Quick, cozy, and ridiculously easy."></textarea>
+            </div>
+
+            <div class="two-column">
+              <div class="field">
+                <label for="prepTime">Prep time</label>
+                <input id="prepTime" name="prepTime" type="text" placeholder="10 min" />
+              </div>
+
+              <div class="field">
+                <label for="cookTime">Cook time</label>
+                <input id="cookTime" name="cookTime" type="text" placeholder="20 min" />
+              </div>
+            </div>
+
+            <div class="two-column">
+              <div class="field">
+                <label for="servings">Servings</label>
+                <input id="servings" name="servings" type="text" placeholder="2" />
+              </div>
+
+              <div class="field">
+                <label for="tags">Tags</label>
+                <input id="tags" name="tags" type="text" placeholder="quick, vegan, weeknight" />
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="imageUrl">Image URL</label>
+              <input id="imageUrl" name="imageUrl" type="url" placeholder="https://example.com/recipe.jpg" />
+            </div>
+
+            <div class="field">
+              <label for="ingredients">Ingredients</label>
+              <textarea id="ingredients" name="ingredients" rows="6" placeholder="1 tbsp oil&#10;2 noodles&#10;1 cup coconut milk" required></textarea>
+            </div>
+
+            <div class="field">
+              <label for="instructions">Instructions</label>
+              <textarea id="instructions" name="instructions" rows="8" placeholder="1. Heat the oil...&#10;2. Add ingredients..." required></textarea>
+            </div>
+
+            <div class="form-actions">
+              <button class="primary" type="submit">Save recipe</button>
+              <button id="cancelEditBtn" class="secondary" type="button">Clear</button>
+            </div>
+          </form>
+        </aside>
+
+        <section class="content">
+          <div class="toolbar">
+            <label class="search-wrap" for="searchInput">
+              <span>Search</span>
+              <input id="searchInput" type="search" placeholder="Try: pasta, vegan, easy" />
+            </label>
+
+            <p id="recipeCount" class="recipe-count">0 recipes</p>
+          </div>
+
+          <div id="emptyState" class="empty-state hidden">
+            <div class="empty-icon">🍽️</div>
+            <h3>No recipes saved yet</h3>
+            <p>Start by adding your first recipe above.</p>
+          </div>
+
+          <div id="recipeGrid" class="recipe-grid" aria-live="polite"></div>
+        </section>
+      </main>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
